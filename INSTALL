@@ -1,0 +1,217 @@
+This document assumes you've already cloned the b2g repo to the path
+$B2G.
+
+
+ Dependencies
+--------------
+* Linux is required to build. In addition to Linux, 4GB RAM and
+  at least 30GB free disk space is recommended.
+
+* adb/fastboot/heimdall need to access your phone. On Linux, this
+  requires setting up udev.
+
+  Put this in /etc/udev/rules.d/android.rules :
+
+  SUBSYSTEM=="usb", ATTRS{idVendor}=="04e8", MODE="0666"
+  SUBSYSTEM=="usb", ATTRS{idVendor}=="18d1", MODE="0666"
+
+* When building B2G for the first time, don't forget to run 'make gonk' first.
+
+* If you're building for the Galaxy S II, you need to install
+  "Heimdall" to be able to flash your phone with B2G.  Follow the
+  instructions at
+
+    http://www.glassechidna.com.au/products/heimdall/
+
+  (Even if you're not building for the Galaxy S II, it's not a bad
+  idea to install Heimdall anyway.)
+
+* There are a few other dependencies you may find necessary to
+  install.  These were found to be necessary when building on a ubuntu
+  64bit system.
+
+    # sudo apt-get install ia32-libs gcc-multilib g++-multilib bison \
+      flex gperf lib32z1-dev lib32ncurses5-dev lib32ncursesw5-dev \
+      libidl-dev lib32gomp1 autoconf2.13 ccache libx11-dev \
+      lib32readline-gplv2-dev lib32tinfo-dev
+
+  lib32readline-gplv2-dev is available for Ubuntu 11.10. For Ubuntu 10.10
+  lib32readline5-dev seems to work fine.
+
+
+ Quick start
+-------------
+
+ == Samsung Galaxy SII ==
+
+Getting a download-mode jig is recommended before attempting this.
+
+$ cd $B2G
+$ make sync
+$ make config-galaxy-s2
+$ make kernel
+$ adb reboot download
+$ heimdall flash --kernel boot/kernel-android-galaxy-s2/arch/arm/boot/zImage
+$ adb reboot recovery
+
+This will reboot your phone into CWM-based recovery.
+Use the volume up and down keys and home key to navigate the menus
+and back up your device.
+
+$ make gonk
+$ make flash
+
+ == Fastboot Phones ==
+
+This includes the Nexus S, maguro, akami, and Galaxy Nexus.
+
+Flashing a recovery image and backing up your phone is recommended
+before trying flashing B2G.
+
+$ cd $B2G
+$ make sync
+
+Pick an appropriate configure command for your phone:
+--
+# Nexus S. Flash your phone to ICS first
+$ make config-nexuss-ics
+
+# Maguro
+$ make config-maguro
+
+# Akami
+$ make config-akami
+
+# Galaxy Nexus
+$ make config-galaxy-nexus
+--
+
+# Build
+$ make gonk
+$ make
+
+# Unlock your bootloader if you haven't already
+$ make unlock-bootloader
+
+# Make sure your phone is booted up normally before flashing
+$ make flash-only
+
+ == Android Emulator ==
+
+$ cd $B2G
+$ make sync
+$ make config-qemu
+$ make gonk
+$ make
+$ ./emu.sh
+
+ Detailed instructions
+-----------------------
+
+These instructions assume you have followed the directions in the
+"Dependencies" section.
+
+ == Initialize repository ==
+
+The repository is organized as a top-level B2G module with many
+submodules for the kernel, gecko, and other userspace libraries.
+Before doing anything else, you need to synchronize all these
+submodules
+
+$ cd $B2G
+$ make sync
+
+This takes a *long* time, so be patient.  Whenever you want to pull
+from upstream again, just re-run |make sync|.
+
+ == Configure repo for your device ==
+
+ Galaxy S II:
+$ make config-galaxy-s2
+
+ Android Emulator:
+$ make config-qemu
+
+This configures submodules appropriately for the given device, and for
+devices with proprietary libraries, will attempt to download and
+install the blobs.  The blobs may ask you to agree to an EULA before
+they will install.
+
+ == Build the code ==
+
+When building for the first time, first run:
+
+$ make gonk
+
+Then simply run:
+
+$ make
+
+This step can take a long time.  Subsequent rebuilds will usually be
+much faster, though.
+
+ == Running on the Android Emulator ==
+
+At this stage, if you're building for the Android emulator, you just
+need to run the provided script and you're done.
+
+$ ./emu.sh
+
+ == Kernel Flashing / Device Backup [Galaxy S II] ==
+
+The kernel should be flashed when using the gonk backend on a SII.
+It should only be done once or when the kernel is updated.
+This kernel comes with a clockwork mod variant.
+
+GET A DOWNLOAD MODE JIG BEFORE ATTEMPTING THIS!
+The flashing process is known to fail.
+
+$ make kernel
+$ adb reboot download
+
+This puts your phone into "download mode", in which it's ready to be
+flashed using the "Odin" protocol.  Your phone should boot into a
+screen that says something like, "Downloading, Do not turn off!".  If
+not, something went wrong.  To actually flash the kernel:
+
+$ heimdall flash --kernel boot/kernel-android-galaxy-s2/arch/arm/boot/zImage
+
+Note: If during "make kernel" the process seems to stop and shows a colon for user input, it's probably asking you a question. Try hitting enter to continue.
+
+When this finishes, your phone should reboot normally.  If not,
+something went wrong, get help.  Finally, let's back up your phone's
+current image
+
+$ adb reboot recovery
+
+This boots your phone into a screen that says "CWM-based Recovery"
+at the top-left.  Follow the on-screen instructions to make a backup
+image.
+
+ == Flash device ==
+
+The "image" to be flashed comprises the custom-built kernel and all
+the userspace programs and libraries.
+
+WARNING: Make sure you back up before the next command. If the image
+is bad, it can also *BRICK* your phone.  Flash at your own risk.
+
+$ make flash-only
+
+If all goes well, you'll see the phone reboot into the bootloader,
+then your host machine will report the progress of files it uploads
+and installs on the device.  After finishing, the device will reboot.
+
+ == Install Gaia ==
+
+Gaia is the phone experience prototype being developed by Mozilla. It
+is built into the system image by default. To update gaia on a flashed
+device, run
+
+$ make install-gaia
+
+If you press the "Home" button on device, the Gaia homescreen will
+reload.
+
+
+Happy hacking.
